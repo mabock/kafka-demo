@@ -1,11 +1,13 @@
 package de.bockcoding.examples.kafkademo
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Component
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
@@ -43,7 +45,8 @@ class Producer(
 
 @RestController
 class Controller(
-        val producer: Producer
+        val producer: Producer,
+        private val eventStore: EventStore
 ){
     val random: Random = Random()
 
@@ -51,14 +54,31 @@ class Controller(
     fun postClicks(){
         producer.sendNewClicksToKafkaTopic(random.nextInt(5000))
     }
+
+
+    @GetMapping("clicks")
+    fun getClicks(): MutableList<Clicks> {
+        return eventStore.events
+    }
+}
+
+@Component
+class EventStore() {
+    val events:MutableList<Clicks> = mutableListOf()
 }
 
 
+
 @Component
-class Consumer
+class Consumer (
+        val objectMapper: ObjectMapper,
+        private val eventStore: EventStore
+)
 {
-    @KafkaListener(topics = ["click-topic"], groupId = "group_id2")
+    @KafkaListener(topics = ["click-topic"])
     fun consume(message: String){
-        println(message)
+        val clicks = objectMapper.readValue<Clicks>(message)
+        println("counts: "+ clicks.count + "; uuid: "+clicks.eventId)
+        eventStore.events.add(clicks)
     }
 }
