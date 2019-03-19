@@ -3,4 +3,4 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-rootProject.name = 'kafka-example'
+rootProject.name = 'kafka-demo'
